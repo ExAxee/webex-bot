@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
+from tkinter import LAST
 from urllib import response
+from datetime import datetime
 import requests
 import time
 
@@ -19,6 +21,7 @@ HEADERS  = {
     "Authorization": f"Bearer {TOKEN}",
     "Content-Type": "application/json"
 }
+LAST_UPDATE = datetime.now()
 
 # Function declaratins
 def request(url: str, **kwargs: any) -> requests.Response:
@@ -27,27 +30,54 @@ def request(url: str, **kwargs: any) -> requests.Response:
         headers=HEADERS
     )
 
+def post(url: str, **kwargs: any) -> requests.Response:
+    return requests.post(url, params=kwargs, headers=HEADERS)
+
 print("starting bot...")
 while True:
     recieve_endpoint = BASE_URL + "rooms"
     message_endpoint = BASE_URL + "messages"
-    response = request(recieve_endpoint, sortBy="lastactivity")
 
-    if response.status_code == 200:
-        update = response.json()
+    # get last udpates
+    messageUpdate = request(recieve_endpoint, sortBy="lastactivity")
 
+    if messageUpdate.status_code == 200:
+        # get response in json format
+        update = messageUpdate.json()
+
+        # cycle throught update items (basically a list of rooms with recent activity)
         for item in update["items"]:
             roomID = item["id"]
+
+            # get the messages in the given room
             messages = request(message_endpoint, roomId=roomID)
             mjson = messages.json()
             
+            # cycle through messages in the room
             for message_item in mjson["items"]:
-                pass
-        # TODO ADD FUNCTIONALITY
-        pass
-    elif response.status_code == 429: # too many requests
+                # if message is sent before the last update then ignore it
+                if LAST_UPDATE < datetime.strptime(message_item["created"], "%Y-%m-%dT%H:%M:%S.%fZ"):
+                    continue
+
+                # if the message is a direct message then respond directly
+                if message_item["roomType"] == "direct":
+                    postResponse = post(
+                        message_endpoint,
+                        roomId = message_item["roomId"],
+                        toPersonId = message_item["personId"],
+                        text = "da funzia"
+                    )
+                else:
+                    postResponse = post(
+                        message_endpoint,
+                        roomId = message_item["roomId"],
+                        text = "da funzia"
+                    )
+    elif messageUpdate.status_code == 429: # too many requests
         pass
     else:
-        raise ConnectionError(f"got response code: {response.status_code} with data {response.json()}")
+        raise ConnectionError(f"got response code: {messageUpdate.status_code} with data {messageUpdate.json()}")
     
-    time.sleep(response.headers.get("Retry-After", 1)) # if the header retry-after is available use that, otherwhise use 0.5
+    LAST_UPDATE = datetime.now()
+    
+    time.sleep(messageUpdate.headers.get("Retry-After", 1)) # if the header retry-after is available use that, otherwhise use 0.5
