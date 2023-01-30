@@ -1,37 +1,13 @@
 #!/usr/bin/env python3
-from tkinter import LAST
-from urllib import response
+from utils import post, request
+from constants import BASE_URL
 from datetime import datetime
-import requests
 import time
 
 # FOR REFERENCE ON WEBEX API: https://developer.webex.com/docs/api/v1/messages
 
-# Get token
-try:
-    import authData
-    TOKEN = authData.access_token
-except ImportError:
-    print("Missing authData.py module containing the `access_token` variable")
-    exit(-1)
-
-# Configue constants
-BASE_URL = "https://api.ciscospark.com/v1/"
-HEADERS  = {
-    "Authorization": f"Bearer {TOKEN}",
-    "Content-Type": "application/json"
-}
+# configure last update
 LAST_UPDATE = datetime.now()
-
-# Function declaratins
-def request(url: str, **kwargs: any) -> requests.Response:
-    return requests.get(
-        f"{url}?{'&'.join([key+'='+kwargs[key] for key in kwargs.keys()])}",
-        headers=HEADERS
-    )
-
-def post(url: str, **kwargs: any) -> requests.Response:
-    return requests.post(url, params=kwargs, headers=HEADERS)
 
 print("starting bot...")
 while True:
